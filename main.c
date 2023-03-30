@@ -119,6 +119,8 @@ static inline void yes_or_no(mm_mapopt_t *opt, int64_t flag, int long_idx, const
 
 int main(int argc, char *argv[])
 {
+  FILE* minimiser_file = fopen("minimizers.fa", "w");
+  fclose(minimiser_file);
 	const char *opt_str = "2aSDw:k:K:t:r:f:Vv:g:G:I:d:XT:s:x:Hcp:M:n:z:A:B:O:E:m:N:Qu:R:hF:LC:yYPo:e:U:j:";
 	ketopt_t o = KETOPT_INIT;
 	mm_mapopt_t opt;

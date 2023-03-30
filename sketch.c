@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <inttypes.h>
 #define __STDC_LIMIT_MACROS
 #include "kvec.h"
 #include "mmpriv.h"
@@ -56,6 +57,19 @@ static inline int tq_shift(tiny_queue_t *q)
 	--q->count;
 	return x;
 }
+
+
+void record_minimizer(void *km, mm128_v *p, mm128_t min, const char *str, int k) {
+  uint32_t rid = ((uint32_t)(min.y>>32));
+  uint32_t end_kmer_pos = ((uint32_t)(min.y))>>1;
+  char kmer[k+1];
+  strncpy(kmer, str+end_kmer_pos-k, k);
+  FILE* minimiser_file = fopen("minimizers.fa", "a");
+  fprintf(minimiser_file, ">%d[%d,%d)\n%s\n", rid, end_kmer_pos-k, end_kmer_pos, kmer);
+  fclose(minimiser_file);
+  kv_push(mm128_t, km, *p, min);
+}
+
 
 /**
  * Find symmetric (w,k)-minimizers on a DNA sequence
@@ -116,30 +130,43 @@ void mm_sketch(void *km, const char *str, int len, int w, int k, uint32_t rid, i
 		buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
 		if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window - because identical k-mers are not stored yet
 			for (j = buf_pos + 1; j < w; ++j)
-				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+				if (min.x == buf[j].x && buf[j].y != min.y) {
+          record_minimizer(km, p, buf[j], str, k);
+        }
 			for (j = 0; j < buf_pos; ++j)
-				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+				if (min.x == buf[j].x && buf[j].y != min.y) {
+          record_minimizer(km, p, buf[j], str, k);
+        }
 		}
 		if (info.x <= min.x) { // a new minimum; then write the old min
-			if (l >= w + k && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+			if (l >= w + k && min.x != UINT64_MAX) {
+        record_minimizer(km, p, min, str, k);
+      }
 			min = info, min_pos = buf_pos;
 		} else if (buf_pos == min_pos) { // old min has moved outside the window
-			if (l >= w + k - 1 && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+			if (l >= w + k - 1 && min.x != UINT64_MAX) {
+        record_minimizer(km, p, min, str, k);
+      }
 			for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
 				if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest k-mer
 			for (j = 0; j <= buf_pos; ++j)
 				if (min.x >= buf[j].x) min = buf[j], min_pos = j;
 			if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
 				for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+					if (min.x == buf[j].x && min.y != buf[j].y) {
+            record_minimizer(km, p, buf[j], str, k);
+          }
 				for (j = 0; j <= buf_pos; ++j)
-					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+					if (min.x == buf[j].x && min.y != buf[j].y) {
+            record_minimizer(km, p, buf[j], str, k);
+          }
 			}
 		}
 		if (++buf_pos == w) buf_pos = 0;
 	}
-	if (min.x != UINT64_MAX)
-		kv_push(mm128_t, km, *p, min);
+	if (min.x != UINT64_MAX) {
+    record_minimizer(km, p, min, str, k);
+  }
 }
 
 void mm_sketch_syncmer(void *km, const char *str, int len, int smer, int k, uint32_t rid, int is_hpc, mm128_v *p)

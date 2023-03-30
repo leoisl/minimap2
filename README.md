@@ -1,3 +1,15 @@
+# minimiser outputter
+
+This modified version of minimap2 outputs the minimisers of the target reference into file `minimizers.fa` in the
+working directory. Just use this for indexing. It should be used as:
+```
+./minimap2 <reference.fa> -k 15 -w 10 -d /dev/null -t 1
+```
+The values for `k` and `w` can be changed, the other don't.
+
+# Minimap2 original README
+
+
 [![GitHub Downloads](https://img.shields.io/github/downloads/lh3/minimap2/total.svg?style=social&logo=github&label=Download)](https://github.com/lh3/minimap2/releases)
 [![BioConda Install](https://img.shields.io/conda/dn/bioconda/minimap2.svg?style=flag&label=BioConda%20install)](https://anaconda.org/bioconda/minimap2)
 [![PyPI](https://img.shields.io/pypi/v/mappy.svg?style=flat)](https://pypi.python.org/pypi/mappy)
