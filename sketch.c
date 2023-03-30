@@ -59,14 +59,18 @@ static inline int tq_shift(tiny_queue_t *q)
 }
 
 
-void record_minimizer(void *km, mm128_v *p, mm128_t min, const char *str, int k) {
-  uint32_t rid = ((uint32_t)(min.y>>32));
-  uint32_t end_kmer_pos = ((uint32_t)(min.y))>>1;
+void record_minimizer(void *km, mm128_v *p, mm128_t min, const char *str, int len, int k) {
   char kmer[k+1];
-  strncpy(kmer, str+end_kmer_pos-k, k);
-  FILE* minimiser_file = fopen("minimizers.fa", "a");
-  fprintf(minimiser_file, ">%d[%d,%d)\n%s\n", rid, end_kmer_pos-k, end_kmer_pos, kmer);
-  fclose(minimiser_file);
+  kmer[k]='\0';
+  uint32_t rid = ((uint32_t)(min.y>>32));
+  int end_kmer_pos = (int)(((uint32_t)(min.y))>>1);
+  int start_kmer_pos = end_kmer_pos-k+1;
+
+  assert(end_kmer_pos<=len);
+  assert(start_kmer_pos>=0);
+
+  strncpy(kmer, str+start_kmer_pos, k);
+  printf(">%d[%d,%d)\n%s\n", rid, start_kmer_pos, end_kmer_pos, kmer);
   kv_push(mm128_t, km, *p, min);
 }
 
@@ -131,21 +135,21 @@ void mm_sketch(void *km, const char *str, int len, int w, int k, uint32_t rid, i
 		if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window - because identical k-mers are not stored yet
 			for (j = buf_pos + 1; j < w; ++j)
 				if (min.x == buf[j].x && buf[j].y != min.y) {
-          record_minimizer(km, p, buf[j], str, k);
+          record_minimizer(km, p, buf[j], str, len, k);
         }
 			for (j = 0; j < buf_pos; ++j)
 				if (min.x == buf[j].x && buf[j].y != min.y) {
-          record_minimizer(km, p, buf[j], str, k);
+          record_minimizer(km, p, buf[j], str, len, k);
         }
 		}
 		if (info.x <= min.x) { // a new minimum; then write the old min
 			if (l >= w + k && min.x != UINT64_MAX) {
-        record_minimizer(km, p, min, str, k);
+        record_minimizer(km, p, min, str, len, k);
       }
 			min = info, min_pos = buf_pos;
 		} else if (buf_pos == min_pos) { // old min has moved outside the window
 			if (l >= w + k - 1 && min.x != UINT64_MAX) {
-        record_minimizer(km, p, min, str, k);
+        record_minimizer(km, p, min, str, len, k);
       }
 			for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
 				if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest k-mer
@@ -154,18 +158,18 @@ void mm_sketch(void *km, const char *str, int len, int w, int k, uint32_t rid, i
 			if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
 				for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
 					if (min.x == buf[j].x && min.y != buf[j].y) {
-            record_minimizer(km, p, buf[j], str, k);
+            record_minimizer(km, p, buf[j], str, len, k);
           }
 				for (j = 0; j <= buf_pos; ++j)
 					if (min.x == buf[j].x && min.y != buf[j].y) {
-            record_minimizer(km, p, buf[j], str, k);
+            record_minimizer(km, p, buf[j], str, len, k);
           }
 			}
 		}
 		if (++buf_pos == w) buf_pos = 0;
 	}
 	if (min.x != UINT64_MAX) {
-    record_minimizer(km, p, min, str, k);
+    record_minimizer(km, p, min, str, len, k);
   }
 }
 

@@ -1,9 +1,9 @@
 # minimiser outputter
 
-This modified version of minimap2 outputs the minimisers of the target reference into file `minimizers.fa` in the
-working directory. Just use this for indexing. It should be used as:
+This modified version of minimap2 outputs the minimisers of the target reference into stdout.
+Just use this for indexing. It should be used as:
 ```
-./minimap2 <reference.fa> -k 15 -w 10 -d /dev/null -t 1
+./minimap2 <reference.fa> -k 15 -w 10 -d /dev/null -t 1 2>/dev/null ><output.fa>
 ```
 The values for `k` and `w` can be changed, the other don't.
 
